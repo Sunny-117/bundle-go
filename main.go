@@ -20,12 +20,28 @@ func bundle(entryFile, outputDir string) error {
 		return err
 	}
 
-	bundledCode := ""
+	bundledCode := "(function() {\n"
+	bundledCode += "var modules = {};\n"
+	bundledCode += "function require(modulePath) {\n"
+	bundledCode += "  var module = modules[modulePath];\n"
+	bundledCode += "  if (!module) {\n"
+	bundledCode += "    throw new Error('Cannot find module ' + modulePath);\n"
+	bundledCode += "  }\n"
+	bundledCode += "  if (!module.exports) {\n"
+	bundledCode += "    module.exports = {};\n"
+	bundledCode += "    module(module.exports, module, require);\n"
+	bundledCode += "  }\n"
+	bundledCode += "  return module.exports;\n"
+	bundledCode += "}\n"
+
 	for modulePath := range modules {
-		bundledCode += fmt.Sprintf("// Module: %s\n", modulePath)
+		bundledCode += fmt.Sprintf("modules['%s'] = (function() {\n", modulePath)
 		bundledCode += modules[modulePath]
-		bundledCode += "\n\n"
+		bundledCode += "\nreturn exports;\n})();\n"
 	}
+
+	bundledCode += fmt.Sprintf("require('%s');\n", entryFile)
+	bundledCode += "})();"
 
 	outputFile := path.Join(outputDir, "bundle.js")
 	return ioutil.WriteFile(outputFile, []byte(bundledCode), 0644)
